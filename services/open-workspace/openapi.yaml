@@ -4,7 +4,7 @@ info:
   description: |
     Open a working environment for a git repository at a specific ref.
 
-    **Service URL:** `github.com/imbue-openhost/pi-workbench/services/open-workspace`
+    **Service URL:** `github.com/boweiliu/bottled-pi-cloud-agent/services/open-workspace`
 
     The idea is deliberately small and implementation-neutral: *"here is a
     repository at a commit — send me to a place where a person can work on

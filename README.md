@@ -1,4 +1,4 @@
-# pi-workbench
+# bottled-pi-cloud-agent
 
 An openhost app that gives you tabbed in-browser terminals, preinstalled
 [pi](https://github.com/earendil-works/pi-mono) (a terminal coding agent), and
@@ -43,7 +43,7 @@ on first PTY launch and exports them into every new terminal's environment.
 This is best-effort — if the secrets app isn't around the terminal still works,
 you just set the key yourself.
 
-`HOME` lives on the app's persistent data dir (`/data/app_data/pi-workbench/home`),
+`HOME` lives on the app's persistent data dir (`/data/app_data/bottled-pi-cloud-agent/home`),
 so `/login`, the openhost clone, and shell history all survive container
 redeploys. The workbench's own prompt, aliases, and PATH fixups live at
 `/etc/profile.d/workbench.sh` (sourced by both login and non-login interactive
@@ -72,7 +72,7 @@ use.
 
 ## The `open-workspace` service
 
-pi-workbench is a **provider** of the `open-workspace` openhost service: *"here
+bottled-pi-cloud-agent is a **provider** of the `open-workspace` openhost service: *"here
 is a repo at a commit — send me to a place where a person can work on it."* The
 contract is defined in this repo under [`services/open-workspace/`](services/open-workspace/)
 and is implementation-neutral, so a future provider (a cloud IDE, Cursor,

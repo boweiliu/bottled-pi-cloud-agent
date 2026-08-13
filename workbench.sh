@@ -1,4 +1,4 @@
-# Site config for the pi-workbench. Installed at /etc/profile.d/workbench.sh
+# Site config for bottled-pi-cloud-agent. Installed at /etc/profile.d/workbench.sh
 # so login shells (`bash -l`) pick it up via /etc/profile, and sourced from the
 # bottom of /etc/bash.bashrc (a one-line `source` is appended in the Dockerfile)
 # so non-login interactive bash gets it too. The guard below makes the

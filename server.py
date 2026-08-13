@@ -1,4 +1,4 @@
-"""pi-workbench: tabbed web terminals + pi, for building/debugging openhost apps.
+"""bottled-pi-cloud-agent: tabbed web terminals + pi, for building/debugging openhost apps.
 
 Routes:
     GET  /                         -> tabbed terminal UI
