@@ -8,8 +8,9 @@ default instead of Claude Code.
 
 ## What's inside the container
 
-- `@earendil-works/pi-coding-agent` (npm, installed at image build time). Run
-  `pi` in any terminal to start it.
+- `@earendil-works/pi-coding-agent` (npm, pinned `0.84.1`, requires Node >= 22;
+  the image installs Node 22 from NodeSource). Run `pi` in any terminal to
+  start it.
 - Python 3 + git + the usual tools (gh, glab, uv, the `oh` openhost CLI).
 - A clone of `https://github.com/imbue-openhost/openhost` placed at
   `~/openhost` on first container start (override with `OPENHOST_REPO_URL` or
@@ -19,23 +20,19 @@ default instead of Claude Code.
 
 ## Model selection
 
-On a fresh persistent HOME the workbench seeds `~/.pi/agent/settings.json` and
-`~/.pi/agent/models.json` so pi picks a sensible default model:
+On a fresh persistent HOME the workbench seeds `~/.pi/agent/settings.json` so
+pi picks a sensible default model (pi 0.84+ fetches its model catalog at
+runtime, so no extra model definitions are needed):
 
 - `OPENROUTER_API_KEY` present → `openrouter` / `openrouter/auto`
 - otherwise `ZAI_API_KEY` present → `zai` / `glm-5.2`
 - neither → left unconfigured, so pi prompts for `/login` on first run
 
-Override the defaults with `PI_DEFAULT_PROVIDER` and `PI_DEFAULT_MODEL` env
-vars (or edit `~/.pi/agent/settings.json` after first start). The seed only
-writes when the files don't exist, so manual config is never clobbered.
-
-> **Note on `glm-5.2`:** the installed pi release may not list GLM 5.2 in its
-> built-in catalog yet (newer releases may expose it as `zai-org/GLM-5.2` via
-> the `baseten` provider). The workbench adds it to `models.json` as
-> `zai/glm-5.2`, so it resolves regardless. To target the Baseten route instead,
-> set `PI_DEFAULT_PROVIDER=baseten` and
-> `PI_DEFAULT_MODEL=zai-org/GLM-5.2`.
+Both defaults are in pi 0.84.1's catalog (`openrouter/auto`, and `glm-5.2` on
+the `zai` provider). Override them with `PI_DEFAULT_PROVIDER` and
+`PI_DEFAULT_MODEL` env vars (or edit `~/.pi/agent/settings.json` after first
+start). The seed only writes when the file doesn't exist, so manual config is
+never clobbered.
 
 ## Authentication
 

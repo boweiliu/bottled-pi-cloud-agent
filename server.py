@@ -154,13 +154,13 @@ async def _get_zai_key() -> str:
 
 
 async def _seed_pi_settings() -> None:
-    """Best-effort: seed pi's global config so it picks a sensible default model.
+    """Best-effort: seed pi's global settings so it picks a sensible default model.
 
-    pi reads ~/.pi/agent/settings.json (default provider/model) and
-    ~/.pi/agent/models.json (extra model definitions). We write both only when
-    they don't already exist, so a user's manual config is never clobbered.
+    pi reads ~/.pi/agent/settings.json (default provider/model). We write it
+    only when it doesn't already exist, so a user's manual config is never
+    clobbered. The model catalog itself is fetched by pi at runtime (0.84+),
+    so both defaults below resolve out of the box:
 
-    Default selection:
       - OPENROUTER_API_KEY present  -> openrouter / openrouter/auto
       - else ZAI_API_KEY present    -> zai / glm-5.2
       - neither                     -> leave unconfigured (pi will prompt /login)
@@ -177,59 +177,11 @@ async def _seed_pi_settings() -> None:
     provider = os.environ.get("PI_DEFAULT_PROVIDER", "").strip() or provider
     model = os.environ.get("PI_DEFAULT_MODEL", "").strip() or model
 
-    pi_dir = HOME / ".pi" / "agent"
-    pi_dir.mkdir(parents=True, exist_ok=True)
-
-    settings_path = pi_dir / "settings.json"
+    settings_path = HOME / ".pi" / "agent" / "settings.json"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
     if not settings_path.exists():
         settings_path.write_text(
             json.dumps({"defaultProvider": provider, "defaultModel": model}, indent=2) + "\n"
-        )
-
-    # Extra model definitions so the chosen defaults resolve even when the
-    # installed pi doesn't ship them in its built-in catalog. Kept minimal but
-    # complete so they're self-contained regardless of pi's own model list.
-    models_path = pi_dir / "models.json"
-    if not models_path.exists():
-        models_path.write_text(
-            json.dumps(
-                {
-                    "providers": {
-                        "openrouter": {
-                            "models": [
-                                {
-                                    "id": "openrouter/auto",
-                                    "name": "Auto Router",
-                                    "api": "openai-completions",
-                                    "baseUrl": "https://openrouter.ai/api/v1",
-                                    "reasoning": True,
-                                    "input": ["text", "image"],
-                                    "cost": {"input": -1000000, "output": -1000000, "cacheRead": 0, "cacheWrite": 0},
-                                    "contextWindow": 2000000,
-                                    "maxTokens": 4096,
-                                }
-                            ]
-                        },
-                        "zai": {
-                            "models": [
-                                {
-                                    "id": "glm-5.2",
-                                    "name": "GLM 5.2",
-                                    "api": "openai-completions",
-                                    "baseUrl": "https://api.z.ai/api/coding/paas/v4",
-                                    "compat": {"supportsDeveloperRole": False, "thinkingFormat": "zai", "zaiToolStream": True},
-                                    "reasoning": True,
-                                    "input": ["text"],
-                                    "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
-                                    "contextWindow": 200000,
-                                    "maxTokens": 131072,
-                                }
-                            ]
-                        },
-                    }
-                },
-                indent=2,
-            ) + "\n"
         )
 
 

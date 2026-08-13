@@ -9,8 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         unzip zip file man-db gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Node.js 20 from NodeSource — Ubuntu's own nodejs package lags badly.
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+# Node.js 22 from NodeSource — pi 0.84+ requires Node >= 22.19.0, and Ubuntu's
+# own nodejs package lags badly.
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
@@ -36,9 +37,9 @@ RUN set -eux; \
     tar -xzf /tmp/glab.tar.gz -C /usr/local bin/glab; \
     rm /tmp/glab.tar.gz
 
-# pi — the coding agent this workbench is built around. Pinned to a known-good
-# version; bump as new releases land.
-RUN npm install -g @earendil-works/pi-coding-agent@0.74.2
+# pi — the coding agent this workbench is built around. 0.84.1 ships GLM 5.2
+# and openrouter/auto in its model catalog (Node >= 22.19.0 required).
+RUN npm install -g @earendil-works/pi-coding-agent@0.84.1
 
 # Python deps for the server.
 RUN python3 -m venv /opt/venv \
