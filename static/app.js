@@ -106,7 +106,7 @@
   const sessionId = params.get('session');
   if (sessionId) {
     history.replaceState({}, '', location.pathname);
-    createTab({ sessionId, label: 'claude' });
+    createTab({ sessionId, label: 'pi' });
   } else {
     createTab();
   }

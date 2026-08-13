@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # If the openhost runtime has provisioned a persistent data dir for us, move
-# HOME there so `claude login` credentials, the openhost clone, shell history,
-# etc. survive container redeploys. The site rcfile lives at
+# HOME there so pi's auth/settings, the openhost clone, shell history, etc.
+# survive container redeploys. The site rcfile lives at
 # /etc/profile.d/workbench.sh, so HOME is left untouched — anything the user
 # writes into ~/.bashrc / ~/.bash_profile is theirs and survives image updates.
 if [ -n "${OPENHOST_APP_DATA_DIR:-}" ]; then
@@ -15,7 +15,7 @@ fi
 OPENHOST_REPO="${OPENHOST_REPO_URL:-https://github.com/imbue-openhost/openhost.git}"
 OPENHOST_DIR="${OPENHOST_DIR:-$HOME/openhost}"
 SKILL_SRC="/app/skills/openhost"
-SKILL_DST="$HOME/.claude/skills/openhost"
+SKILL_DST="$HOME/.pi/agent/skills/openhost"
 
 if [ ! -d "$OPENHOST_DIR/.git" ]; then
     echo "[entrypoint] cloning openhost into $OPENHOST_DIR ..."

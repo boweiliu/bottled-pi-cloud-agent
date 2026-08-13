@@ -1,10 +1,10 @@
-"""claude-workbench: tabbed web terminals + Claude Code, for building/debugging openhost apps.
+"""pi-workbench: tabbed web terminals + pi, for building/debugging openhost apps.
 
 Routes:
     GET  /                         -> tabbed terminal UI
     GET  /health                   -> health check
     GET  /terminal/ws              -> WebSocket PTY (one session per connection)
-    POST /api/sessions             -> queue a prefilled Claude session; returns {id, url}
+    POST /api/sessions             -> queue a prefilled pi session; returns {id, url}
                                       body: {"prompt": "...", "context": "..."}
                                       the next WS that connects with ?session=<id> picks it up
     POST /open-workspace           -> open-workspace service provider: clone a repo at a
@@ -49,10 +49,12 @@ OAUTH_SHORTNAME = "oauth"
 
 app = Quart(__name__, template_folder=str(APP_DIR / "templates"), static_folder=str(APP_DIR / "static"))
 
-# Cached ANTHROPIC_API_KEY value, fetched lazily from the secrets app on first
-# PTY launch. `None` means "not yet fetched"; "" means "tried, not available".
-_anthropic_key: str | None = None
-_anthropic_lock = asyncio.Lock()
+# Cached API keys fetched lazily from the secrets app on first PTY launch.
+# `None` means "not yet fetched"; a dict means "tried" (possibly with some keys
+# missing). We only cache a *non-empty* result so a temporarily-missing secrets
+# app gets retried on the next tab.
+_secrets_cache: dict[str, str] | None = None
+_secrets_lock = asyncio.Lock()
 
 
 async def _fetch_secrets(keys: list[str]) -> dict[str, str]:
@@ -72,11 +74,6 @@ async def _fetch_secrets(keys: list[str]) -> dict[str, str]:
         return {k: v for k, v in (resp.json().get("secrets") or {}).items() if v}
     except Exception:
         return {}
-
-
-async def _fetch_anthropic_key() -> str:
-    """Ask the secrets-v2 app for ANTHROPIC_API_KEY. Returns "" if unavailable."""
-    return (await _fetch_secrets(["ANTHROPIC_API_KEY"])).get("ANTHROPIC_API_KEY", "")
 
 
 async def _fetch_github_token() -> str:
@@ -135,18 +132,105 @@ async def _seed_oh_config() -> None:
     )
 
 
-async def _get_anthropic_key() -> str:
-    """Return the cached key, fetching once if we haven't yet (or last attempt failed)."""
-    global _anthropic_key
-    if _anthropic_key:
-        return _anthropic_key
-    async with _anthropic_lock:
-        if _anthropic_key:
-            return _anthropic_key
-        key = await _fetch_anthropic_key()
-        if key:
-            _anthropic_key = key
-        return key
+async def _get_secret(key: str) -> str:
+    """Return a cached secret value, fetching all needed keys once on first use."""
+    global _secrets_cache
+    if _secrets_cache is not None:
+        return _secrets_cache.get(key, "")
+    async with _secrets_lock:
+        if _secrets_cache is None:
+            got = await _fetch_secrets(["OPENROUTER_API_KEY", "ZAI_API_KEY"])
+            if got:
+                _secrets_cache = got
+        return _secrets_cache.get(key, "") if _secrets_cache else ""
+
+
+async def _get_openrouter_key() -> str:
+    return await _get_secret("OPENROUTER_API_KEY")
+
+
+async def _get_zai_key() -> str:
+    return await _get_secret("ZAI_API_KEY")
+
+
+async def _seed_pi_settings() -> None:
+    """Best-effort: seed pi's global config so it picks a sensible default model.
+
+    pi reads ~/.pi/agent/settings.json (default provider/model) and
+    ~/.pi/agent/models.json (extra model definitions). We write both only when
+    they don't already exist, so a user's manual config is never clobbered.
+
+    Default selection:
+      - OPENROUTER_API_KEY present  -> openrouter / openrouter/auto
+      - else ZAI_API_KEY present    -> zai / glm-5.2
+      - neither                     -> leave unconfigured (pi will prompt /login)
+
+    Override with PI_DEFAULT_PROVIDER / PI_DEFAULT_MODEL env vars.
+    """
+    if await _get_openrouter_key():
+        provider, model = "openrouter", "openrouter/auto"
+    elif await _get_zai_key():
+        provider, model = "zai", "glm-5.2"
+    else:
+        return
+
+    provider = os.environ.get("PI_DEFAULT_PROVIDER", "").strip() or provider
+    model = os.environ.get("PI_DEFAULT_MODEL", "").strip() or model
+
+    pi_dir = HOME / ".pi" / "agent"
+    pi_dir.mkdir(parents=True, exist_ok=True)
+
+    settings_path = pi_dir / "settings.json"
+    if not settings_path.exists():
+        settings_path.write_text(
+            json.dumps({"defaultProvider": provider, "defaultModel": model}, indent=2) + "\n"
+        )
+
+    # Extra model definitions so the chosen defaults resolve even when the
+    # installed pi doesn't ship them in its built-in catalog. Kept minimal but
+    # complete so they're self-contained regardless of pi's own model list.
+    models_path = pi_dir / "models.json"
+    if not models_path.exists():
+        models_path.write_text(
+            json.dumps(
+                {
+                    "providers": {
+                        "openrouter": {
+                            "models": [
+                                {
+                                    "id": "openrouter/auto",
+                                    "name": "Auto Router",
+                                    "api": "openai-completions",
+                                    "baseUrl": "https://openrouter.ai/api/v1",
+                                    "reasoning": True,
+                                    "input": ["text", "image"],
+                                    "cost": {"input": -1000000, "output": -1000000, "cacheRead": 0, "cacheWrite": 0},
+                                    "contextWindow": 2000000,
+                                    "maxTokens": 4096,
+                                }
+                            ]
+                        },
+                        "zai": {
+                            "models": [
+                                {
+                                    "id": "glm-5.2",
+                                    "name": "GLM 5.2",
+                                    "api": "openai-completions",
+                                    "baseUrl": "https://api.z.ai/api/coding/paas/v4",
+                                    "compat": {"supportsDeveloperRole": False, "thinkingFormat": "zai", "zaiToolStream": True},
+                                    "reasoning": True,
+                                    "input": ["text"],
+                                    "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+                                    "contextWindow": 200000,
+                                    "maxTokens": 131072,
+                                }
+                            ]
+                        },
+                    }
+                },
+                indent=2,
+            ) + "\n"
+        )
 
 
 @dataclass
@@ -154,7 +238,7 @@ class PendingSession:
     """A prefilled session waiting for a websocket to attach.
 
     `command` runs in the PTY at startup. `stdin_seed` is fed to its stdin
-    once after launch (used to send a multi-line prompt to `claude`).
+    once after launch (used to start `pi` in the default shell).
     """
 
     command: list[str]
@@ -391,10 +475,11 @@ async def index() -> object:
 
 @app.post("/api/sessions")
 async def create_session() -> object:
-    """Reserve a prefilled Claude session.
+    """Reserve a prefilled pi session.
 
     Returns an id; the frontend opens a new tab whose websocket includes
-    ?session=<id>, and we launch `claude` there with the prompt piped in.
+    ?session=<id>, and we launch `pi` there with the prompt as its initial
+    message (pi accepts an initial prompt as a positional arg).
     """
     data = await request.get_json(silent=True) or {}
     prompt: str = (data.get("prompt") or "").strip()
@@ -404,17 +489,16 @@ async def create_session() -> object:
 
     seed_parts: list[str] = []
     if context:
-        seed_parts.append(f"# Context\n\n{context}\n")
+        seed_parts.append(f"# Context\n\n{context}")
     if prompt:
         seed_parts.append(prompt)
-    seed = "\n\n".join(seed_parts) + "\n"
+    seed = "\n\n".join(seed_parts)
 
     sid = secrets.token_urlsafe(8)
     _put_pending(
         sid,
         PendingSession(
-            command=["claude", "--dangerously-skip-permissions"],
-            stdin_seed=seed,
+            command=["pi", seed] if seed else ["pi"],
             cwd=str(OPENHOST_DIR if OPENHOST_DIR.exists() else HOME),
         ),
     )
@@ -508,14 +592,15 @@ async def terminal_ws() -> None:
         command = ["bash", "-l"]
         cwd = str(MY_PROJECT_DIR) if MY_PROJECT_DIR.exists() else str(HOME)
         extra_env = {}
-        stdin_seed = "claude\n"
+        stdin_seed = "pi\n"
 
-    # Pre-populate ANTHROPIC_API_KEY from the secrets app if available and the
-    # caller hasn't already set one.
-    if "ANTHROPIC_API_KEY" not in extra_env:
-        key = await _get_anthropic_key()
-        if key:
-            extra_env["ANTHROPIC_API_KEY"] = key
+    # Pre-populate API keys from the secrets app if available and the caller
+    # hasn't already set them.
+    for env_key, getter in (("OPENROUTER_API_KEY", _get_openrouter_key), ("ZAI_API_KEY", _get_zai_key)):
+        if env_key not in extra_env:
+            key = await getter()
+            if key:
+                extra_env[env_key] = key
 
     await _bridge_pty(command=command, cwd=cwd, extra_env=extra_env, stdin_seed=stdin_seed)
 
@@ -610,6 +695,7 @@ async def _serve() -> None:
     import hypercorn.config
 
     await _seed_oh_config()
+    await _seed_pi_settings()
 
     cfg = hypercorn.config.Config()
     cfg.bind = ["0.0.0.0:5000"]

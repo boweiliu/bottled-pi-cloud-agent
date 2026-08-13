@@ -1,4 +1,4 @@
-# Site config for the claude-workbench. Installed at /etc/profile.d/workbench.sh
+# Site config for the pi-workbench. Installed at /etc/profile.d/workbench.sh
 # so login shells (`bash -l`) pick it up via /etc/profile, and sourced from the
 # bottom of /etc/bash.bashrc (a one-line `source` is appended in the Dockerfile)
 # so non-login interactive bash gets it too. The guard below makes the
@@ -53,7 +53,8 @@ alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 
-alias claude='claude --dangerously-skip-permissions'
+# pi reads OPENROUTER_API_KEY (or ZAI_API_KEY) from the environment; server.py
+# seeds those from the secrets app into each terminal. Run `pi` to start.
 
 # Interactive login banner: prompt to configure the `oh` CLI if no config
 # exists yet. The workbench tries to seed this file on startup using the

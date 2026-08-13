@@ -36,7 +36,9 @@ RUN set -eux; \
     tar -xzf /tmp/glab.tar.gz -C /usr/local bin/glab; \
     rm /tmp/glab.tar.gz
 
-RUN npm install -g @anthropic-ai/claude-code
+# pi — the coding agent this workbench is built around. Pinned to a known-good
+# version; bump as new releases land.
+RUN npm install -g @earendil-works/pi-coding-agent@0.74.2
 
 # Python deps for the server.
 RUN python3 -m venv /opt/venv \
@@ -53,11 +55,6 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/b
 # the container — but it lets `apt-get install` and friends work at runtime
 # without sudo (which no_new_privs blocks anyway).
 ENV HOME=/root
-
-# Claude Code refuses --dangerously-skip-permissions when uid == 0 unless it
-# believes it's already sandboxed. We are (rootless podman, no_new_privs,
-# cap-drop=ALL), so tell it so.
-ENV IS_SANDBOX=1
 
 WORKDIR /app
 COPY server.py /app/server.py
