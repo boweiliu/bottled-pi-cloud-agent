@@ -24,12 +24,12 @@ On a fresh persistent HOME the workbench seeds `~/.pi/agent/settings.json` so
 pi picks a sensible default model (pi 0.84+ fetches its model catalog at
 runtime, so no extra model definitions are needed):
 
-- `OPENROUTER_API_KEY` present → `openrouter` / `openrouter/auto`
+- `OPENROUTER_API_KEY` present → `openrouter` / `z-ai/glm-5.2` (GLM 5.2 routed
+  through OpenRouter)
 - otherwise `ZAI_API_KEY` present → `zai` / `glm-5.2`
 - neither → left unconfigured, so pi prompts for `/login` on first run
 
-Both defaults are in pi 0.84.1's catalog (`openrouter/auto`, and `glm-5.2` on
-the `zai` provider). Override them with `PI_DEFAULT_PROVIDER` and
+GLM 5.2 is the default in both cases. Override with `PI_DEFAULT_PROVIDER` and
 `PI_DEFAULT_MODEL` env vars (or edit `~/.pi/agent/settings.json` after first
 start). The seed only writes when the file doesn't exist, so manual config is
 never clobbered.

@@ -161,14 +161,14 @@ async def _seed_pi_settings() -> None:
     clobbered. The model catalog itself is fetched by pi at runtime (0.84+),
     so both defaults below resolve out of the box:
 
-      - OPENROUTER_API_KEY present  -> openrouter / openrouter/auto
+      - OPENROUTER_API_KEY present  -> openrouter / z-ai/glm-5.2 (GLM 5.2 via OpenRouter)
       - else ZAI_API_KEY present    -> zai / glm-5.2
       - neither                     -> leave unconfigured (pi will prompt /login)
 
     Override with PI_DEFAULT_PROVIDER / PI_DEFAULT_MODEL env vars.
     """
     if await _get_openrouter_key():
-        provider, model = "openrouter", "openrouter/auto"
+        provider, model = "openrouter", "z-ai/glm-5.2"
     elif await _get_zai_key():
         provider, model = "zai", "glm-5.2"
     else:
